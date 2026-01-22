@@ -21,9 +21,7 @@ Okay, so let's first look at some RAW data from a HWT905TTL IMU.
 55 5a 00 00 00 00 00 00 00 00 af
 ```
 
-What does any of this mean?!
-
-Each byte of data (which is in hexadecimal format) 
+What does any of this mean?! 
 
 A frame is 11 bytes that follow the following format
 
@@ -53,9 +51,40 @@ Register | Type
 
 You might see that there are 4 pieces of data (Ex. DATA1) that are broken down into 2 parts: H (high) and L (low).
 
-DATA1L contains bits 0-7, while DATA1H contains bits 8-15 (Least Significant Bit (LSB) on the right). Combining them yields the 16 bits in total sent in DATA1.
+DATA1L are the low 8 bits, containing bits 0-7, while DATA1H are the high 8 bits, containing bits 8-15 (Most Significant Bit (MSB) on the left). Combining them yields the 16 bits in total sent in DATA1.
 
-*Keep in mind that the data is signed, meaning the 16th bit represents the sign of the number.
+Here is the binary number 1011010110010111 displayed, with DATA1H = 10110101 & DATA1L = 10010111 
+
+ H | H | H | H | H | H | H | H | L | L | L | L | L | L | L | L 
+---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---
+1 | 0 | 1 | 1 | 0 | 1 | 0 | 1 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 1 
+15 | 14 | 13 | 12 | 11 | 10 | 09 | 08 | 07 | 06 | 05 | 04 | 03 | 02 | 01 | 00 
+
+*Keep in mind that the data is signed, meaning the 16th bit represents the sign of the number (1 = negative).*
+
+The contents of the 4 pieces of data are listed in the protocol. For example, acceleration outputs Ax (DATA1), Ay (DATA2), Az (DATA3), and Temp (DATA4).
+
+Lastly, the checksum is useful for error detection in our data. To use it, we add all the bytes in the frame together (other than the checksum) and check if the result equals the checksum. If it does, good. If not, then the data may not be valid.
+
+Now with the individual frames explained, lets look at it all together
+
+```
+55 50 00 00 00 00 05 28 95 01 68
+55 51 0c 00 93 02 6d 08 b7 07 7a
+55 52 00 00 00 00 00 00 b7 07 65
+55 53 04 0c e1 ff 6f f2 cc 46 0b
+55 54 ac f9 3b 0b 86 e7 00 00 01
+55 55 ed 0f a3 0a 57 08 fb 06 b3
+55 56 00 00 00 00 00 00 00 00 ab
+55 59 23 83 84 ed 5f 03 f1 14 2c
+55 5a 00 00 00 00 00 00 00 00 af
+```
+
+One thing you might notice is how the IMU outputs all types of data (as indicated from the ascending values in the second column). Essentially, the IMU constantly outputs bytes of data, starting from the 0x50 frame  (Time) until the last one. Afterwards, the IMU loops back to the 0x50 frame again, with updated values. This cycle will go on forever - atleast in theory.
+
+*Note: you can configure what data is outputed by the IMU. You can also control the output rate of the data, even turning it off to a request basis.*
+
+Now, I must say that protocols vary from device to device, so if something goes wrong with a different device, it's not my fault - read the device's documentation.
 
 ## Installation
 
