@@ -1,20 +1,25 @@
-import struct
+from threading import Thread
+from ProtocolProcessor import ProtocolProcessor
+from queue import Queue
+
 import serial
 import time
 
 class IMU:
+
+  FRAME_SIZE = 11
+
+  framePackageBuffer = Queue()
+  serialPort = None
+  thread = None
+
   def __init__(self, port, baud):
-      self.__ser = serial.Serial(port, baud, timeout=0.5)
-      print("Initiated!")
+    self.port = port
+    self.baud = baud
+    self.protocolProcessor = ProtocolProcessor(self.FRAME_SIZE)
 
   def write(self, register, dataL, dataH):
       self.__ser.write(bytes([0xFF, 0xAA, register, dataL, dataH]))
-
-  def checksum_ok(self, frame):
-    return (sum(frame[:10]) & 0xFF) == frame[10]
-
-  def to_int16(self, lo, hi):
-    return struct.unpack('<h', bytes([lo, hi]))[0]
 
   def unlock(self):
     self.write(0x69, 0x88, 0xB5)
@@ -122,7 +127,7 @@ class IMU:
     self.save()
 
     time.sleep(5)
-    print("Output Rate Changed!")
+    print("Bandwidth Changed!")
 
   def setBaud(self, baud):
     """
@@ -146,32 +151,37 @@ class IMU:
 
     print("Changed Baud")
 
-  def readFrame(self):
-    """Read a single 11-byte IMU frame starting with 0x55."""
-    
-    while True:
-        if self.__ser.read(1) == b'\x55':
-            break
-
-    frame = self.__ser.read(10)
-    if len(frame) != 10:
-        return None
-
-    return b'\x55' + frame
-
   def getOutputData(self):
-    frame = self.readFrame()
-    startingRegister = frame[1]
+    return self.framePackageBuffer.get()
 
-    result = [frame]
-    
-    frame = self.readFrame()   
-    register = frame[1]
-    
-    while (register != startingRegister):
-      result.append(frame)
-      frame = self.readFrame()   
-      register = frame[1]
+  def openDevice(self):
+    self.closeDevice()
 
-    return result
-            
+    try:
+      self.serialPort = serial.Serial(self.port, self.baud, timeout=None)
+      self.isOpen = True
+      self.thread = Thread(target=self.readDataTh)
+      self.thread.start()
+    except Exception as ex:
+      print(ex)
+
+  def readDataTh(self):
+    while self.isOpen:
+      try:
+        numBytes = self.serialPort.inWaiting()
+        if (numBytes > 0):
+          data = self.serialPort.read(numBytes)
+          framePackages = self.protocolProcessor.processData(data)
+
+          for framePackage in framePackages:
+            self.framePackageBuffer.put(framePackage)
+          
+      except Exception as ex:
+        print(ex)
+        
+  def closeDevice(self):
+    self.isOpen = False
+
+    if self.serialPort:
+      self.serialPort.close()
+    
