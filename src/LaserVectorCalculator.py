@@ -76,7 +76,6 @@ def eul2quat(psi, theta, phi):
 
   return np.array([[q0], [q1], [q2], [q3]])
 
-
 def calculateLaserVector(encoderData, quatIMU):
 
   encoder_z = encoderData[0]
@@ -89,14 +88,13 @@ def calculateLaserVector(encoderData, quatIMU):
 
   return calcPointVector(quatEncoderUnit, quatIMUUnit)
 
-
 def calculateLaserVectorTest(encoderData, imuData):
   encoder_z = encoderData[0]
   encoder_a = encoderData[1]
 
-  imu_x = imuData[0];  
-  imu_y = imuData[1];   
-  imu_z = imuData[2];   
+  imu_x = imuData[0] 
+  imu_y = imuData[1]   
+  imu_z = imuData[2]   
   
   quatIMU = eul2quat(imu_z, imu_y, imu_x)
   quatIMUUnit = quatIMU / la.norm(quatIMU)

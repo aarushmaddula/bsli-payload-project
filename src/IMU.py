@@ -5,11 +5,26 @@ from queue import Queue
 import serial
 import time
 
+import threading
+
+class LatestFrame:
+    def __init__(self):
+        self._frame = None
+        self._lock = threading.Lock()
+
+    def set(self, frame):
+        with self._lock:
+            self._frame = frame
+
+    def get(self):
+        with self._lock:
+            return self._frame
+
 class IMU:
 
   FRAME_SIZE = 11
 
-  framePackageBuffer = Queue()
+  framePackageBuffer = LatestFrame()
   frameRequestBuffer = Queue()
 
   serialPort = None
@@ -172,8 +187,8 @@ class IMU:
           data = self.serialPort.read(numBytes)
           framePackages, frameRequests = self.protocolProcessor.processData(data)
 
-          for framePackage in framePackages:
-            self.framePackageBuffer.put(framePackage)
+          if framePackages:
+            self.framePackageBuffer.set(framePackages.pop())
 
           for frameRequest in frameRequests:
             self.frameRequestBuffer.put(frameRequest)
@@ -191,3 +206,21 @@ class IMU:
     self.write(0x27, register, register >> 8)
 
     return self.frameRequestBuffer.get()
+  
+  def readConfig(self):
+    config = {}
+    
+    values: dict = self.readRegister(0x02) 
+    
+    if (len(values) != 0):
+      config["content"] = values["v1"]
+      config["rate"] = values["v2"]
+      config["baud"] = values["v3"]
+    
+    values: dict = self.readRegister(0x23)
+
+    if (len(values)>0):
+      config["direction"] = values["v1"]
+      config["algorithm"] = values["v2"]
+
+    return config

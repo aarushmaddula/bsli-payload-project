@@ -1,93 +1,75 @@
-from IMU import IMU
-from datetime import datetime
-
-import numpy as np
 import math
-import csv
-import os
 import time
 
-from LaserVectorCalculator import calculateLaserVector
+from datetime import datetime
+import dotenv
+import numpy as np
+import struct
+import random
 
-# PORT = "/dev/pts/5"
-PORT = "/dev/ttyUSB0"
-BAUD = 230400
+from IMU import IMU
+from Servo import Servo
+from LaserVectorCalculator import calculateLaserVector
+from FileManager import FileManager
 
 now = datetime.now()
 
 fileName = f"{now.strftime("%m.%d.%Y-%H:%M:%S")}.csv"
 dirName = "./data/"
+headers = ["Time", "Ax", "Ay", "Az", "Wx", "Wy", "Wz", "q0", "q1", "q2", "q3"]
 
-base_path = os.path.normpath(dirName)
-path = os.path.join(base_path, fileName)
-os.makedirs(base_path, exist_ok=True)
+f = FileManager(fileName, dirName, headers)
 
-file = open(path, "x")
-w = csv.writer(file)
- 
-arr = ["Time", "Ax", "Ay", "Az", "Wx", "Wy", "Wz", "q0", "q1", "q2", "q3"]
-
-w.writerow(arr)
-
-imu = IMU(PORT, BAUD)
+imu = IMU("/dev/ttyUSB0", 230400)
 imu.openDevice()
 
-def readConfig():
-    tVals: dict = imu.readRegister(0x02) 
-    
-    if (len(tVals)>0):
-        for i in tVals:
-            print(i, hex(tVals.get(i)))
-    else:
-        print("None")
-    
-    tVals = imu.readRegister(0x23)
+s = Servo("/dev/ttyUSB1", 115200, 1)
+s.turnMotorOn()
 
-    if (len(tVals)>0):
-        print(str(tVals))
-    else:
-        print("None")
-
-readConfig()
+# a = 0
 
 while True:
     data = imu.getOutputData()
 
-    w.writerow([
-        data.get("hour", 0) * (3600 * 1000) + data.get("minute", 0) * (60 * 1000) + data.get("second", 0) * (1000) + data.get("millisecond", 0),
-        data.get("ax", "None"),
-        data.get("ay", "None"),
-        data.get("az", "None"),
-        data.get("wx", "None"),
-        data.get("wy", "None"),
-        data.get("wz", "None"),
-        data.get("q0", "None"),
-        data.get("q1", "None"),
-        data.get("q2", "None"),
-        data.get("q3", "None")
-    ])
+    a = int((data.get("yaw", 0) + 180) * 100)
+
     
-    d2r = math.pi/180
-    r2d = 180/math.pi
+    bites = s.readMultiLoopAngle()    
+    b = struct.unpack('<i', bites[5:9])[0]
 
-    encoder_z = 0*d2r
-    encoder_a = 0*d2r
+    rots = b // 36000
 
-    encoderData = np.array([encoder_z, encoder_a])
+    diff = (b - a + 18000) % 36000 - 18000
+    angle = b - diff
 
-    q0 = data.get("q0", "None")
-    q1 = data.get("q1", "None")
-    q2 = data.get("q2", "None")
-    q3 = data.get("q3", "None")
+    print(a, "\t", b, "\t", rots,"\t", diff, "\t", angle)
 
-    quatIMU = np.array([q0, q1, q2, q3])
+    # s.setSingleLoopAngle(a, 0x01 if diff > 0 else 0x00)
+    s.setMultiLoopAngle(angle)
+
+    # a += int(np.random.normal(loc=0, scale=1000))
+    # a %= 36000
+
+    # time.sleep(0.1)
+
+    # f.recordOutput(data)
     
-    e = calculateLaserVector(encoderData, quatIMU)
-    
-    r = [10, 5, 10]; 
-    r_x = r[0]
-    r_y = r[1]
-    r_z = r[2]
+    # d2r = math.pi/180
+    # r2d = 180/math.pi
 
+    # encoder_z = 0*d2r
+    # encoder_a = 0*d2r
+
+    # encoderData = np.array([encoder_z, encoder_a])
+
+    # q0 = data.get("q0", "None")
+    # q1 = data.get("q1", "None")
+    # q2 = data.get("q2", "None")
+    # q3 = data.get("q3", "None")
+
+    # quatIMU = np.array([q0, q1, q2, q3])
+    
+    # e = calculateLaserVector(encoderData, quatIMU)
+    
 
 
