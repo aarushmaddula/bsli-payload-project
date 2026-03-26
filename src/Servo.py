@@ -5,8 +5,11 @@ class Servo:
     HEAD_BYTE = 0x3E
 
     def __init__(self, port: str, baud: int, id: int):
-        self.deviceId = id
-        self.ser = serial.Serial(port, baud, timeout=0.5)
+        try:
+            self.deviceId = int(id)
+            self.ser = serial.Serial(port, baud, timeout=0.5)
+        except:
+            print("Unable to connect to Servo")
 
     def checksum_ok(self, frame):
         return (sum(frame[:self.PACK_SIZE - 1]) & 0xFF) == frame[self.PACK_SIZE - 1]
