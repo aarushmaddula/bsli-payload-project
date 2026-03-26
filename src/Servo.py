@@ -59,6 +59,10 @@ class Servo:
         frame = self.buildFrame(0xA3, self.toTwoComplement(angle, 8))
         return self.sendCommand(frame, 7)
 
+    def setMultiLoopAngleSpeed(self, angle: int, maxSpeed: int) -> bytes:
+        frame = self.buildFrame(0xA4, [*self.toTwoComplement(angle, 8), *self.toTwoComplement(maxSpeed, 4)])
+        return self.sendCommand(frame, 7)
+        
     def setSingleLoopAngle(self, angle: int, spinDirection: bool = 0x00) -> bytes:
         frame = self.buildFrame(0xA5, [spinDirection, angle & 0xFF, angle >> 8, 0x00])
         return self.sendCommand(frame, 7)
