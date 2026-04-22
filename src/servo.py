@@ -7,7 +7,7 @@ class Servo:
     def __init__(self, port: str, baud: int, id: int):
         try:
             self.deviceId = int(id)
-            self.ser = serial.Serial(port, baud, timeout=0.5)
+            self.ser = serial.Serial(port, baud, timeout=1.5)
         except:
             print("Unable to connect to Servo")
 

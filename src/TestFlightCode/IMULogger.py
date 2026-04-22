@@ -5,8 +5,8 @@ import numpy as np
 from datetime import datetime
 from dotenv import load_dotenv
 
-from IMU import IMU
-from FileManager import FileManager
+from imu import IMU
+from file_manager import FileManager
 
 load_dotenv()
 

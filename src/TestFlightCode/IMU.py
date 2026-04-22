@@ -1,5 +1,5 @@
 from threading import Thread
-from ProtocolProcessor import ProtocolProcessor
+from protocol_processor import ProtocolProcessor
 from queue import Queue
 
 import serial
