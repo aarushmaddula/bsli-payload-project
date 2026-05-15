@@ -1,6 +1,5 @@
 import serial
 
-
 class GPS:
     def __init__(self, port: str, baud: int):
         self.ser = serial.Serial(port, baud, timeout=1.5)
